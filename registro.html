@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Crear una cuenta</title>
+
+    <link rel="stylesheet" href="registro.css">
+</head>
+
+<body>
+
+    <div class="ventana">
+
+        <!-- PARTE IZQUIERDA -->
+        <div class="izquierda">
+
+            <h1>crea una cuenta ahora mismo</h1>
+
+            <form id="formularioRegistro">
+
+                <label for="usuario">nombre del usuario</label>
+                <input type="text" id="usuario" required>
+
+
+                <label for="correo">correo electrónico</label>
+                <input type="email" id="correo" required>
+
+                <label for="contrasena">contraseña</label>
+                <input type="password" id="contrasena" required>
+
+                <!-- Mensajes de validación -->
+                <div id="validacionContrasena">
+
+                    <p id="longitud">Mínimo 8 caracteres</p>
+
+                    <p id="mayuscula">Una letra mayúscula</p>
+
+                    <p id="minuscula">Una letra minúscula</p>
+
+                    <p id="numero">Un número</p>
+
+                    <p id="especial">Un carácter especial</p>
+
+                </div>
+
+                <label>genero</label>
+
+                <div class="genero">
+
+                    <label>
+                        <input type="radio" name="genero" value="hombre">
+                        hombre
+                    </label>
+
+                    <label>
+                        <input type="radio" name="genero" value="mujer">
+                        mujer
+                    </label>
+
+                </div>
+
+                <label for="fecha">fecha de nacimiento</label>
+
+                <input
+                    type="date"
+                    id="fecha"
+                    class="fecha"
+                    required
+                >
+
+                <button type="submit">
+                    Crear cuenta
+                </button>
+
+                <a href="../index.html" class="boton-cuenta">
+                    Ya tengo una cuenta
+                </a>
+
+            </form>
+
+        </div>
+
+        <div class="derecha">
+
+            <h2>foto de perfil</h2>
+
+            <div class="foto-container">
+
+                <img
+                    id="fotoPerfil"
+                    src=""
+                    alt="Foto de perfil"
+                >
+
+                <span id="textoFoto">
+                    Sin foto
+                </span>
+
+            </div>
+
+
+            <label
+                for="seleccionarFoto"
+                class="boton-foto"
+            >
+                Seleccionar foto
+            </label>
+
+
+            <input
+                type="file"
+                id="seleccionarFoto"
+                accept="image/*"
+                hidden
+            >
+
+        </div>
+
+    </div>
+
+
+    <script>
+        const seleccionarFoto =
+            document.getElementById("seleccionarFoto");
+
+        const fotoPerfil =
+            document.getElementById("fotoPerfil");
+
+        const textoFoto =
+            document.getElementById("textoFoto");
+
+
+        seleccionarFoto.addEventListener("change", function () {
+
+            const archivo = this.files[0];
+
+            if (archivo) {
+
+                fotoPerfil.src =
+                    URL.createObjectURL(archivo);
+
+                fotoPerfil.style.display = "block";
+
+                textoFoto.style.display = "none";
+            }
+
+        });
+
+        const formulario =
+            document.getElementById("formularioRegistro");
+
+        const contrasena =
+            document.getElementById("contrasena");
+
+
+        const longitud =
+            document.getElementById("longitud");
+
+        const mayuscula =
+            document.getElementById("mayuscula");
+
+        const minuscula =
+            document.getElementById("minuscula");
+
+        const numero =
+            document.getElementById("numero");
+
+        const especial =
+            document.getElementById("especial");
+
+
+        // Validar mientras el usuario escribe
+        contrasena.addEventListener("input", function () {
+
+            const password = contrasena.value;
+
+            if (password.length >= 8) {
+
+                longitud.textContent =
+                    "✔ Mínimo 8 caracteres";
+
+            } else {
+
+                longitud.textContent =
+                    "✖ Mínimo 8 caracteres";
+            }
+
+            if (/[A-Z]/.test(password)) {
+
+                mayuscula.textContent =
+                    "✔ Una letra mayúscula";
+
+            } else {
+
+                mayuscula.textContent =
+                    "✖ Una letra mayúscula";
+            }
+
+            if (/[a-z]/.test(password)) {
+
+                minuscula.textContent =
+                    "✔ Una letra minúscula";
+
+            } else {
+
+                minuscula.textContent =
+                    "✖ Una letra minúscula";
+            }
+
+            if (/[0-9]/.test(password)) {
+
+                numero.textContent =
+                    "✔ Un número";
+
+            } else {
+
+                numero.textContent =
+                    "✖ Un número";
+            }
+
+            if (/[!@#$%^&*(),.?":{}|<>_\-+=]/.test(password)) {
+
+                especial.textContent =
+                    "✔ Un carácter especial";
+
+            } else {
+
+                especial.textContent =
+                    "✖ Un carácter especial";
+            }
+
+        });
+
+        formulario.addEventListener("submit", function (evento) {
+
+            const password = contrasena.value;
+
+
+            const passwordValida =
+                password.length >= 8 &&
+                /[A-Z]/.test(password) &&
+                /[a-z]/.test(password) &&
+                /[0-9]/.test(password) &&
+                /[!@#$%^&*(),.?":{}|<>_\-+=]/.test(password);
+
+
+            if (!passwordValida) {
+
+                evento.preventDefault();
+
+                alert(
+                    "La contraseña no cumple con todos los requisitos."
+                );
+
+                return;
+            }
+
+
+            alert("¡Cuenta creada correctamente!");
+
+        });
+
+    </script>
+
+</body>
+
+</html>

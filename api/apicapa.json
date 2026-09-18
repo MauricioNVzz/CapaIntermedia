@@ -1,0 +1,42 @@
+[
+    {
+        "id": 1,
+        "titulo": "HTML y CSS desde cero",
+        "descripcion": "Aprende a crear páginas web utilizando HTML y CSS.",
+        "categoria": "Programación",
+        "instructor": "Carlos Ramírez",
+        "precio": 299,
+        "duracion": "8 horas",
+        "imagen": "html-css.jpg"
+    },
+    {
+        "id": 2,
+        "titulo": "JavaScript para principiantes",
+        "descripcion": "Aprende los fundamentos de JavaScript y programación web.",
+        "categoria": "Programación",
+        "instructor": "Ana López",
+        "precio": 399,
+        "duracion": "12 horas",
+        "imagen": "javascript.jpg"
+    },
+    {
+        "id": 3,
+        "titulo": "Matemáticas desde cero",
+        "descripcion": "Curso introductorio de matemáticas para estudiantes.",
+        "categoria": "Matemáticas",
+        "instructor": "Miguel Torres",
+        "precio": 249,
+        "duracion": "10 horas",
+        "imagen": "matematicas.jpg"
+    },
+    {
+        "id": 4,
+        "titulo": "Marketing Digital",
+        "descripcion": "Aprende los fundamentos del marketing digital.",
+        "categoria": "Marketing",
+        "instructor": "Laura Martínez",
+        "precio": 449,
+        "duracion": "15 horas",
+        "imagen": "marketing.jpg"
+    }
+]
