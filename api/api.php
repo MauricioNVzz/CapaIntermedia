@@ -1,17 +1,22 @@
 <?php
-// La API siempre responderá en formato JSON
+
+// CONFIGURACION DE LA API
+
 header("Content-Type: application/json; charset=UTF-8");
-
-// Permitir solicitudes desde otras páginas
 header("Access-Control-Allow-Origin: *");
-
-// Métodos HTTP permitidos
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-
-// Headers permitidos
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
-$archivo = "datos/cursos.json";
+// CONEXION A MYSQL
+
+include "../conexion.php";
+
+require_once "../controllers/CursoController.php";
+
+$cursoController = new CursoController($conexion);
+
+
+// FUNCION PARA RESPONDER EN JSON
 
 function responder($codigo, $datos)
 {
@@ -25,29 +30,16 @@ function responder($codigo, $datos)
     exit;
 }
 
-if (!file_exists($archivo)) {
-
-    responder(500, [
-        "error" => true,
-        "mensaje" => "Error interno del servidor: no se encontró el archivo de cursos."
-    ]);
-}
-
-$contenido = file_get_contents($archivo);
-
-$cursos = json_decode($contenido, true);
-
-
-// Comprobar que el JSON sea válido
-if ($cursos === null && json_last_error() !== JSON_ERROR_NONE) {
-
-    responder(500, [
-        "error" => true,
-        "mensaje" => "Error interno del servidor: los datos de cursos no son válidos."
-    ]);
-}
+// METODO OPTIONS
 
 $metodo = $_SERVER["REQUEST_METHOD"];
+
+if ($metodo === "OPTIONS") {
+    http_response_code(200);
+    exit;
+}
+
+// COMPROBAR AUTORIZACION
 
 function comprobarAutorizacion()
 {
@@ -59,86 +51,94 @@ function comprobarAutorizacion()
 
         responder(401, [
             "error" => true,
-            "mensaje" => "No autorizado. Se requiere un token válido."
+            "mensaje" => "No autorizado. Se requiere un token valido."
         ]);
     }
 }
+
+// GET
 
 if ($metodo === "GET") {
 
-    if (isset($_GET["id"])) {
+    try {
 
-        $id = filter_input(INPUT_GET, "id", FILTER_VALIDATE_INT);
+        // GET /api.php?id=1
 
-        // ID inválido
-        if ($id === false || $id === null || $id <= 0) {
+        if (isset($_GET["id"])) {
 
-            responder(400, [
-                "error" => true,
-                "mensaje" => "El parámetro id debe ser un número entero positivo."
-            ]);
-        }
+            $id = filter_input(
+                INPUT_GET,
+                "id",
+                FILTER_VALIDATE_INT
+            );
 
+            if ($id === false || $id === null || $id <= 0) {
 
-        $cursoEncontrado = null;
-
-
-        foreach ($cursos as $curso) {
-
-            if ($curso["id"] == $id) {
-
-                $cursoEncontrado = $curso;
-
-                break;
+                responder(400, [
+                    "error" => true,
+                    "mensaje" => "El parametro id debe ser un numero entero positivo."
+                ]);
             }
-        }
 
+            $curso = $cursoController->obtenerPorId($id);
 
-        // Curso no encontrado
-        if ($cursoEncontrado === null) {
+            if ($curso === null) {
 
-            responder(404, [
-                "error" => true,
-                "mensaje" => "Curso no encontrado."
+                responder(404, [
+                    "error" => true,
+                    "mensaje" => "Curso no encontrado."
+                ]);
+            }
+
+            responder(200, [
+                "error" => false,
+                "curso" => $curso
             ]);
         }
 
+        // GET /api.php
+        // Obtener todos los cursos
 
-        // Curso encontrado
+        $cursos = $cursoController->obtenerTodos();
+
         responder(200, [
             "error" => false,
-            "curso" => $cursoEncontrado
+            "total" => count($cursos),
+            "cursos" => $cursos
+        ]);
+
+    } catch (Throwable $e) {
+
+        responder(500, [
+            "error" => true,
+            "mensaje" => "Error interno del servidor."
         ]);
     }
-
-    responder(200, [
-        "error" => false,
-        "total" => count($cursos),
-        "cursos" => $cursos
-    ]);
 }
+
+// POST
 
 if ($metodo === "POST") {
 
-    // Comprobar autorización
     comprobarAutorizacion();
 
+    $datos = json_decode(
+        file_get_contents("php://input"),
+        true
+    );
 
-    // Leer información enviada en JSON
-    $datos = json_decode(file_get_contents("php://input"), true);
+    // Validar JSON
 
-
-    // Comprobar que recibimos JSON válido
     if (!is_array($datos)) {
 
         responder(400, [
             "error" => true,
-            "mensaje" => "Los datos enviados no tienen un formato JSON válido."
+            "mensaje" => "Los datos enviados no tienen un formato JSON valido."
         ]);
     }
 
-
     // Campos obligatorios
+
     $camposObligatorios = [
         "titulo",
         "descripcion",
@@ -148,11 +148,12 @@ if ($metodo === "POST") {
         "duracion"
     ];
 
-
-    // Comprobar campos
     foreach ($camposObligatorios as $campo) {
 
-        if (!isset($datos[$campo]) || $datos[$campo] === "") {
+        if (
+            !isset($datos[$campo]) ||
+            $datos[$campo] === ""
+        ) {
 
             responder(400, [
                 "error" => true,
@@ -161,66 +162,97 @@ if ($metodo === "POST") {
         }
     }
 
+    // Validar precio
 
-    // Comprobar precio
-    if (!is_numeric($datos["precio"]) || $datos["precio"] < 0) {
+    if (
+        !is_numeric($datos["precio"]) ||
+        $datos["precio"] < 0
+    ) {
 
         responder(400, [
             "error" => true,
-            "mensaje" => "El precio debe ser un número mayor o igual a 0."
+            "mensaje" => "El precio debe ser un numero mayor o igual a 0."
         ]);
     }
 
+    // Validar categoria
 
-    // Generar nuevo ID
-    $nuevoId = 1;
+   if (
+    !isset($datos["categoria"]) ||
+    $datos["categoria"] === "" ||
+    !filter_var($datos["categoria"], FILTER_VALIDATE_INT) ||
+    (int)$datos["categoria"] <= 0
+) {
+    responder(400, [
+        "error" => true,
+        "mensaje" => "La categoria debe ser un ID valido."
+    ]);
+}
 
-    if (count($cursos) > 0) {
+$categoria = (int)$datos["categoria"];
 
-        $ids = array_column($cursos, "id");
+if (!$cursoController->comprobarCategoria($categoria)) {
+    responder(400, [
+        "error" => true,
+        "mensaje" => "La categoria indicada no existe."
+    ]);
+}
 
-        $nuevoId = max($ids) + 1;
-    }
+    // Validar instructor
 
+    if (
+    !isset($datos["instructor"]) ||
+    $datos["instructor"] === "" ||
+    !filter_var($datos["instructor"], FILTER_VALIDATE_INT) ||
+    (int)$datos["instructor"] <= 0
+) {
+    responder(400, [
+        "error" => true,
+        "mensaje" => "El instructor debe ser un ID valido."
+    ]);
+}
 
-    // Crear curso
-    $nuevoCurso = [
-        "id" => $nuevoId,
-        "titulo" => $datos["titulo"],
-        "descripcion" => $datos["descripcion"],
-        "categoria" => $datos["categoria"],
-        "instructor" => $datos["instructor"],
-        "precio" => (float)$datos["precio"],
-        "duracion" => $datos["duracion"],
-        "imagen" => $datos["imagen"] ?? ""
-    ];
+$instructor = (int)$datos["instructor"];
 
+if (!$cursoController->comprobarInstructor($instructor)) {
+    responder(400, [
+        "error" => true,
+        "mensaje" => "El instructor indicado no existe o no tiene el rol Maestro."
+    ]);
+}
 
-    // Agregar curso al arreglo
-    $cursos[] = $nuevoCurso;
+// Crear curso mediante el controlador
 
+$titulo = $datos["titulo"];
+$descripcion = $datos["descripcion"];
+$precio = (float)$datos["precio"];
+$duracion = $datos["duracion"];
+$imagen = $datos["imagen"] ?? "";
 
-    // Guardar archivo
-    $resultado = file_put_contents(
-        $archivo,
-        json_encode(
-            $cursos,
-            JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT
-        )
+try {
+
+    $nuevoId = $cursoController->crearCurso(
+        $categoria,
+        $instructor,
+        $titulo,
+        $precio,
+        $descripcion,
+        $duracion,
+        $imagen
     );
 
+} catch (Throwable $e) {
 
-    // Error al guardar
-    if ($resultado === false) {
+    responder(500, [
+        "error" => true,
+        "mensaje" => "No fue posible crear el curso."
+    ]);
+}
 
-        responder(500, [
-            "error" => true,
-            "mensaje" => "No fue posible guardar el nuevo curso."
-        ]);
-    }
+    // Obtener curso creado
 
+$nuevoCurso = $cursoController->obtenerPorId($nuevoId);
 
-    // Curso creado
     responder(201, [
         "error" => false,
         "mensaje" => "Curso creado correctamente.",
@@ -228,72 +260,66 @@ if ($metodo === "POST") {
     ]);
 }
 
+// PUT
+
 if ($metodo === "PUT") {
 
-    // Comprobar autorización
     comprobarAutorizacion();
 
-
     // Comprobar ID
+
     if (!isset($_GET["id"])) {
 
         responder(400, [
             "error" => true,
-            "mensaje" => "Debe proporcionar el parámetro id."
+            "mensaje" => "Debe proporcionar el parametro id."
         ]);
     }
 
-
-    $id = filter_input(INPUT_GET, "id", FILTER_VALIDATE_INT);
-
+    $id = filter_input(
+        INPUT_GET,
+        "id",
+        FILTER_VALIDATE_INT
+    );
 
     if ($id === false || $id === null || $id <= 0) {
 
         responder(400, [
             "error" => true,
-            "mensaje" => "El parámetro id debe ser un número entero positivo."
+            "mensaje" => "El parametro id debe ser un numero entero positivo."
         ]);
     }
 
+    // Comprobar que el curso existe
 
-    // Buscar curso
-    $indice = -1;
+    $cursoExistente = $cursoController->obtenerPorId($id);
 
-    foreach ($cursos as $i => $curso) {
+if ($cursoExistente === null) {
 
-        if ($curso["id"] == $id) {
+    responder(404, [
+        "error" => true,
+        "mensaje" => "Curso no encontrado."
+    ]);
+}
 
-            $indice = $i;
+    // Leer JSON
 
-            break;
-        }
-    }
-
-
-    // Curso no encontrado
-    if ($indice === -1) {
-
-        responder(404, [
-            "error" => true,
-            "mensaje" => "Curso no encontrado."
-        ]);
-    }
-
-
-    // Leer datos enviados
-    $datos = json_decode(file_get_contents("php://input"), true);
-
+    $datos = json_decode(
+        file_get_contents("php://input"),
+        true
+    );
 
     if (!is_array($datos)) {
 
         responder(400, [
             "error" => true,
-            "mensaje" => "Los datos enviados no tienen un formato JSON válido."
+            "mensaje" => "Los datos enviados no tienen un formato JSON valido."
         ]);
     }
 
 
     // Campos obligatorios
+
     $camposObligatorios = [
         "titulo",
         "descripcion",
@@ -303,10 +329,12 @@ if ($metodo === "PUT") {
         "duracion"
     ];
 
-
     foreach ($camposObligatorios as $campo) {
 
-        if (!isset($datos[$campo]) || $datos[$campo] === "") {
+        if (
+            !isset($datos[$campo]) ||
+            $datos[$campo] === ""
+        ) {
 
             responder(400, [
                 "error" => true,
@@ -316,144 +344,179 @@ if ($metodo === "PUT") {
     }
 
 
-    // Comprobar precio
-    if (!is_numeric($datos["precio"]) || $datos["precio"] < 0) {
+    // Validar precio
+
+    if (
+        !is_numeric($datos["precio"]) ||
+        $datos["precio"] < 0
+    ) {
 
         responder(400, [
             "error" => true,
-            "mensaje" => "El precio debe ser un número mayor o igual a 0."
+            "mensaje" => "El precio debe ser un numero mayor o igual a 0."
         ]);
     }
 
+    // Validar categoria
 
-    // Actualizar curso
-    $cursos[$indice] = [
-        "id" => $id,
-        "titulo" => $datos["titulo"],
-        "descripcion" => $datos["descripcion"],
-        "categoria" => $datos["categoria"],
-        "instructor" => $datos["instructor"],
-        "precio" => (float)$datos["precio"],
-        "duracion" => $datos["duracion"],
-        "imagen" => $datos["imagen"] ?? ""
-    ];
-
-
-    // Guardar cambios
-    $resultado = file_put_contents(
-        $archivo,
-        json_encode(
-            $cursos,
-            JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT
-        )
-    );
-
-
-    if ($resultado === false) {
-
-        responder(500, [
-            "error" => true,
-            "mensaje" => "No fue posible actualizar el curso."
-        ]);
-    }
-
-
-    responder(200, [
-        "error" => false,
-        "mensaje" => "Curso actualizado correctamente.",
-        "curso" => $cursos[$indice]
+    if (
+    !isset($datos["categoria"]) ||
+    $datos["categoria"] === "" ||
+    !filter_var($datos["categoria"], FILTER_VALIDATE_INT) ||
+    (int)$datos["categoria"] <= 0
+) {
+    responder(400, [
+        "error" => true,
+        "mensaje" => "La categoria debe ser un ID valido."
     ]);
 }
 
+$categoria = (int)$datos["categoria"];
+
+if (!$cursoController->comprobarCategoria($categoria)) {
+    responder(400, [
+        "error" => true,
+        "mensaje" => "La categoria indicada no existe."
+    ]);
+}
+
+    // Validar instructor
+
+   if (
+    !isset($datos["instructor"]) ||
+    $datos["instructor"] === "" ||
+    !filter_var($datos["instructor"], FILTER_VALIDATE_INT) ||
+    (int)$datos["instructor"] <= 0
+) {
+    responder(400, [
+        "error" => true,
+        "mensaje" => "El instructor debe ser un ID valido."
+    ]);
+}
+
+$instructor = (int)$datos["instructor"];
+
+if (!$cursoController->comprobarInstructor($instructor)) {
+    responder(400, [
+        "error" => true,
+        "mensaje" => "El instructor indicado no existe o no tiene el rol Maestro."
+    ]);
+}
+
+// Actualizar curso mediante el controlador
+
+$titulo = $datos["titulo"];
+$descripcion = $datos["descripcion"];
+$precio = (float)$datos["precio"];
+$duracion = $datos["duracion"];
+$imagen = $datos["imagen"] ?? "";
+
+try {
+
+    $cursoController->actualizarCurso(
+        $id,
+        $categoria,
+        $instructor,
+        $titulo,
+        $precio,
+        $descripcion,
+        $duracion,
+        $imagen
+    );
+
+} catch (Throwable $e) {
+
+    responder(500, [
+        "error" => true,
+        "mensaje" => "No fue posible actualizar el curso."
+    ]);
+}
+
+    // Obtener curso actualizado
+
+    $cursoActualizado = $cursoController->obtenerPorId($id);
+
+    responder(200, [
+    "error" => false,
+    "mensaje" => "Curso actualizado correctamente.",
+    "curso" => $cursoActualizado
+]);
+}
+
+// DELETE
 if ($metodo === "DELETE") {
 
-    // Comprobar autorización
     comprobarAutorizacion();
 
-
-    // Comprobar ID
     if (!isset($_GET["id"])) {
-
         responder(400, [
             "error" => true,
-            "mensaje" => "Debe proporcionar el parámetro id."
+            "mensaje" => "Debe proporcionar el id del curso."
         ]);
     }
 
-
-    $id = filter_input(INPUT_GET, "id", FILTER_VALIDATE_INT);
-
-
-    if ($id === false || $id === null || $id <= 0) {
-
-        responder(400, [
-            "error" => true,
-            "mensaje" => "El parámetro id debe ser un número entero positivo."
-        ]);
-    }
-
-
-    // Buscar curso
-    $indice = -1;
-
-    foreach ($cursos as $i => $curso) {
-
-        if ($curso["id"] == $id) {
-
-            $indice = $i;
-
-            break;
-        }
-    }
-
-
-    // Curso no encontrado
-    if ($indice === -1) {
-
-        responder(404, [
-            "error" => true,
-            "mensaje" => "Curso no encontrado."
-        ]);
-    }
-
-
-    // Guardar curso eliminado para responder
-    $cursoEliminado = $cursos[$indice];
-
-
-    // Eliminar
-    array_splice($cursos, $indice, 1);
-
-
-    // Guardar archivo
-    $resultado = file_put_contents(
-        $archivo,
-        json_encode(
-            $cursos,
-            JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT
-        )
+    $id = filter_input(
+        INPUT_GET,
+        "id",
+        FILTER_VALIDATE_INT
     );
 
+    if ($id === false || $id === null || $id <= 0) {
+        responder(400, [
+            "error" => true,
+            "mensaje" => "El parametro id debe ser un numero entero positivo."
+        ]);
+    }
 
-    if ($resultado === false) {
+    try {
+
+        // Comprobar que el curso existe
+        $cursoExistente = $cursoController->obtenerPorId($id);
+
+        if ($cursoExistente === null) {
+            responder(404, [
+                "error" => true,
+                "mensaje" => "Curso no encontrado."
+            ]);
+        }
+
+        // Eliminar mediante el controlador
+        $cursoController->eliminarCurso($id);
+
+        responder(200, [
+            "error" => false,
+            "mensaje" => "Curso eliminado correctamente."
+        ]);
+
+    } catch (mysqli_sql_exception $e) {
+
+        // Error 1451 = el curso tiene registros relacionados
+        if ($e->getCode() == 1451) {
+
+            responder(409, [
+                "error" => true,
+                "mensaje" => "No se puede eliminar el curso porque tiene registros relacionados."
+            ]);
+        }
 
         responder(500, [
             "error" => true,
-            "mensaje" => "No fue posible eliminar el curso."
+            "mensaje" => "Error interno del servidor."
+        ]);
+
+    } catch (Throwable $e) {
+
+        responder(500, [
+            "error" => true,
+            "mensaje" => "Error interno del servidor."
         ]);
     }
-
-
-    responder(200, [
-        "error" => false,
-        "mensaje" => "Curso eliminado correctamente.",
-        "curso" => $cursoEliminado
-    ]);
 }
 
+// 405
 responder(405, [
     "error" => true,
-    "mensaje" => "Método HTTP no permitido."
+    "mensaje" => "Metodo HTTP no permitido."
 ]);
 
 ?>
