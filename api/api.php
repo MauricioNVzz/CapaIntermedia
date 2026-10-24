@@ -1,11 +1,32 @@
 <?php
 
-// CONFIGURACION DE LA API
+// Orígenes autorizados para consumir la API.
+$origenesPermitidos = [
+    "http://localhost",
+    "http://127.0.0.1"
+];
 
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Origin: *");
+$origen = $_SERVER["HTTP_ORIGIN"] ?? "";
+$metodo = $_SERVER["REQUEST_METHOD"];
+
+// Permitir únicamente los orígenes autorizados.
+if (in_array($origen, $origenesPermitidos, true)) {
+    header("Access-Control-Allow-Origin: " . $origen);
+    header("Vary: Origin");
+}
+
+// Métodos y encabezados permitidos.
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
+
+// Las respuestas de esta API utilizan JSON.
+header("Content-Type: application/json; charset=utf-8");
+
+// Resolver solicitudes preliminares de CORS.
+if ($metodo === "OPTIONS") {
+    http_response_code(204);
+    exit;
+}
 
 // CONEXION A MYSQL
 
@@ -27,15 +48,6 @@ function responder($codigo, $datos)
         JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT
     );
 
-    exit;
-}
-
-// METODO OPTIONS
-
-$metodo = $_SERVER["REQUEST_METHOD"];
-
-if ($metodo === "OPTIONS") {
-    http_response_code(200);
     exit;
 }
 
