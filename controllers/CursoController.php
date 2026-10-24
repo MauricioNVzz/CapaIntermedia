@@ -1,6 +1,6 @@
 <?php
 
-require_once "../models/Curso.php";
+require_once __DIR__ . "/../models/curso.php";
 
 class CursoController
 {
@@ -11,45 +11,27 @@ class CursoController
         $this->curso = new Curso($conexion);
     }
 
-    // GET: obtener todos los cursos
     public function obtenerTodos()
     {
         return $this->curso->obtenerTodos();
     }
 
-    // Obtener todas las categorías
-public function obtenerCategorias()
-{
-    return $this->curso->obtenerCategorias();
-}
-
-    // GET: obtener un curso por ID
     public function obtenerPorId($id)
     {
         return $this->curso->obtenerPorId($id);
     }
-    // Comprobar que la categoría existe
-public function comprobarCategoria($categoria)
-{
-    return $this->curso->comprobarCategoria($categoria);
-}
 
-// Comprobar que el instructor existe y tiene rol Maestro
-public function comprobarInstructor($instructor)
-{
-    return $this->curso->comprobarInstructor($instructor);
-}
-// Crear un nuevo curso
-public function crearCurso(
-    $categoria,
-    $instructor,
-    $titulo,
-    $precio,
-    $descripcion,
-    $duracion,
-    $imagen
-) {
-    return $this->curso->crearCurso(
+    public function comprobarCategoria($categoria)
+    {
+        return $this->curso->comprobarCategoria($categoria);
+    }
+
+    public function comprobarInstructor($instructor)
+    {
+        return $this->curso->comprobarInstructor($instructor);
+    }
+
+    public function crearCurso(
         $categoria,
         $instructor,
         $titulo,
@@ -57,20 +39,19 @@ public function crearCurso(
         $descripcion,
         $duracion,
         $imagen
-    );
-}
-// Actualizar un curso
-public function actualizarCurso(
-    $id,
-    $categoria,
-    $instructor,
-    $titulo,
-    $precio,
-    $descripcion,
-    $duracion,
-    $imagen
-) {
-    return $this->curso->actualizarCurso(
+    ) {
+        return $this->curso->crearCurso(
+            $categoria,
+            $instructor,
+            $titulo,
+            $precio,
+            $descripcion,
+            $duracion,
+            $imagen
+        );
+    }
+
+    public function actualizarCurso(
         $id,
         $categoria,
         $instructor,
@@ -79,12 +60,34 @@ public function actualizarCurso(
         $descripcion,
         $duracion,
         $imagen
-    );
+    ) {
+        return $this->curso->actualizarCurso(
+            $id,
+            $categoria,
+            $instructor,
+            $titulo,
+            $precio,
+            $descripcion,
+            $duracion,
+            $imagen
+        );
+    }
+
+    public function eliminarCurso($id)
+    {
+        return $this->curso->eliminarCurso($id);
+    }
+
+    public function obtenerCategorias()
+    {
+        return $this->curso->obtenerCategorias();
+    }
+
+    public function obtenerPorMaestro($maestroId)
+    {
+        return $this->curso
+            ->obtenerPorMaestro($maestroId);
+    }
 }
-// Eliminar un curso
-public function eliminarCurso($id)
-{
-    return $this->curso->eliminarCurso($id);
-}
-}
+
 ?>
