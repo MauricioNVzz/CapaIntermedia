@@ -1,20 +1,14 @@
 <?php
-$servidor="localhost";
-$usuario="root";
-$password="";
-$base_datos="cursos_cpi";
 
-$conexion=new mysqli( 
-$servidor,
-$usuario,
-$password,
-$base_datos
-);
+require_once __DIR__ . "/config/connect.php";
 
-if ($conexion->connect_error){
-    die("Error de conexion: " . $conexion->connect_error);
+$gestorConexion = new Conexion();
+
+try {
+    $conexion = $gestorConexion->conectar();
+} catch (RuntimeException $e) {
+    http_response_code(500);
+    exit($e->getMessage());
 }
-
-$conexion->set_charset("utf8mb4");
 
 ?>
